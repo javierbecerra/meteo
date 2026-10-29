@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Histórico</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌾</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/estilo.css">
+</head>
+<body>
+<main class="wrap">
+  <div class="cabecera-pag"><h1>Histórico y climatología</h1><p>Resúmenes y récords registrados por la estación</p></div>
+
+  <div class="titulo-bloque" style="margin-top:22px">
+    <div><h2 id="nom" style="font-size:1.2rem"></h2><p id="periodo"></p></div>
+    <button class="btn claro" id="csv">Descargar histórico CSV</button>
+  </div>
+
+  <div class="selector" id="pestanas" style="margin-bottom:16px">
+    <button data-p="resumen" class="on">Resumen</button><button data-p="mensual">Datos mensuales</button><button data-p="diario">Datos diarios</button>
+  </div>
+
+  <div id="p-resumen">
+    <div class="card pad" style="margin-bottom:14px">
+      <div style="display:flex;justify-content:space-between"><span class="nota" style="font-size:.88rem">Cobertura de datos</span><b id="cob-n"></b></div>
+      <div class="cobertura"><i id="cob-barra" style="width:0"></i></div>
+      <span class="nota" id="cob-txt"></span>
+    </div>
+    <div class="records" id="records"></div>
+  </div>
+  <div id="p-mensual" hidden><div class="card tabla-scroll"><table class="lista" id="t-mensual"></table></div></div>
+  <div id="p-diario" hidden><div class="card tabla-scroll"><table class="lista" id="t-diario"></table></div></div>
+</main>
+
+<script src="assets/comun.js"></script>
+<script>
+montarCabecera("Histórico");
+document.title = `Histórico | ${CONFIG.nombre}`;
+$("nom").textContent = CONFIG.estacion;
+
+let diario = {};
+
+document.querySelectorAll("#pestanas button").forEach(b => b.onclick = () => {
+  document.querySelectorAll("#pestanas button").forEach(x => x.classList.toggle("on", x === b));
+  ["resumen", "mensual", "diario"].forEach(p => $("p-" + p).hidden = p !== b.dataset.p);
+});
+
+function record(dias, clave, fn) {
+  const v = dias.filter(([, d]) => d[clave] != null);
+  if (!v.length) return null;
+  return v.reduce((a, b) => fn(b[1][clave], a[1][clave]) ? b : a);
+}
+
+function pintar() {
+  const dias = Object.entries(diario);
+  if (!dias.length) {
+    $("periodo").textContent = "Aún no hay días registrados.";
+    $("records").innerHTML = `<p class="vacio">Los récords aparecerán cuando la estación lleve algún día funcionando.</p>`;
+    return;
+  }
+  const ini = dias[0][0], fin = dias.at(-1)[0];
+  const total = Math.round((new Date(fin) - new Date(ini)) / 86400000) + 1;
+  $("periodo").textContent = `${dias.length} días, del ${fechaISO(ini)} al ${fechaISO(fin)}`;
+  const pc = Math.round(dias.length / total * 100);
+  $("cob-n").textContent = pc + " %"; $("cob-barra").style.width = pc + "%";
+  $("cob-txt").textContent = `${dias.length} días con datos de ${total} en el periodo.`;
+
+  const mayor = (a, b) => a > b, menor = (a, b) => a < b;
+  const R = [
+    ["temp", "Temp. máxima absoluta", "tmax", mayor, 1, "°C"], ["temp", "Temp. mínima absoluta", "tmin", menor, 1, "°C"],
+    ["viento", "Racha máxima de viento", "gmax", mayor, 1, "km/h"], ["pres", "Presión máxima", "pmax", mayor, 1, "hPa"],
+    ["pres", "Presión mínima", "pmin", menor, 1, "hPa"], ["lluvia", "Día más lluvioso", "rain", mayor, 1, "mm"],
+    ["lluvia", "Intensidad máxima de lluvia", "rmax", mayor, 1, "mm/h"], ["hum", "Humedad mínima", "hmin", menor, 0, "%"]
+  ];
+  $("records").innerHTML = R.map(([ic, tit, k, fn, d, u]) => {
+    const r = record(dias, k, fn);
+    return r ? `<article class="card"><div class="cab-card">${icono(ic)}${tit}</div><div class="valor">${fmt(r[1][k], d)}<small>${u}</small></div><div class="fecha">${fechaISO(r[0])}</div></article>` : "";
+  }).join("");
+
+  // Mensual
+  const meses = {};
+  for (const [f, d] of dias) (meses[f.slice(0, 7)] ??= []).push(d);
+  const media = a => a.length ? a.reduce((x, y) => x + y, 0) / a.length : null;
+  const nom = m => new Date(m + "-15").toLocaleDateString("es-ES", { month: "long", year: "numeric" });
+  $("t-mensual").innerHTML = `<tr><th>Mes</th><th>Días</th><th>T. media</th><th>Media máx.</th><th>Media mín.</th><th>Máx. abs.</th><th>Mín. abs.</th><th>Lluvia</th><th>Racha máx.</th></tr>` +
+    Object.entries(meses).reverse().map(([m, ds]) => {
+      const v = k => ds.map(d => d[k]).filter(x => x != null);
+      return `<tr><td>${nom(m)}</td><td>${ds.length}</td><td>${fmt(media(v("tavg")))}</td><td>${fmt(media(v("tmax")))}</td><td>${fmt(media(v("tmin")))}</td>
+        <td class="mx">${fmt(v("tmax").length ? Math.max(...v("tmax")) : null)}</td><td class="mn">${fmt(v("tmin").length ? Math.min(...v("tmin")) : null)}</td>
+        <td>${fmt(v("rain").reduce((a, b) => a + b, 0))}</td><td>${fmt(v("gmax").length ? Math.max(...v("gmax")) : null)}</td></tr>`;
+    }).join("");
+
+  // Diario
+  $("t-diario").innerHTML = `<tr><th>Día</th><th>T. máx.</th><th>T. mín.</th><th>T. media</th><th>Hum. máx.</th><th>Hum. mín.</th><th>Racha máx.</th><th>Lluvia</th><th>Pres. máx.</th><th>Pres. mín.</th></tr>` +
+    dias.slice().reverse().map(([f, d]) => `<tr><td>${fechaISO(f)}</td><td class="mx">${fmt(d.tmax)}</td><td class="mn">${fmt(d.tmin)}</td><td>${fmt(d.tavg)}</td>
+      <td>${fmt(d.hmax, 0)}</td><td>${fmt(d.hmin, 0)}</td><td>${fmt(d.gmax)}</td><td>${fmt(d.rain)}</td><td>${fmt(d.pmax)}</td><td>${fmt(d.pmin)}</td></tr>`).join("");
+}
+
+$("csv").onclick = () => {
+  const cols = ["tmax", "tmin", "tavg", "hmax", "hmin", "gmax", "rain", "rmax", "pmax", "pmin"];
+  const lineas = ["fecha;" + cols.join(";")].concat(Object.entries(diario).map(([f, d]) => f + ";" + cols.map(k => d[k] ?? "").join(";")));
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([lineas.join("\n")], { type: "text/csv" }));
+  a.download = "historico_diario.csv"; a.click();
+};
+
+(async () => { diario = await cargarJSON("data/daily.json", {}); pintar(); })();
+</script>
+</body>
+</html>

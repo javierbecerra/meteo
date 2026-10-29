@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gráficas</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌾</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/estilo.css">
+</head>
+<body>
+<main class="wrap">
+  <div class="cabecera-pag"><h1>Gráficas</h1><p>Evolución reciente de la estación</p></div>
+
+  <div class="titulo-bloque" style="margin-top:22px">
+    <div><h2 id="nom" style="font-size:1.2rem"></h2><p id="desc"></p></div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <div class="selector" id="rango"><button data-h="24" class="on">24 h</button><button data-h="48">48 h</button><button data-h="168">7 días</button></div>
+      <button class="btn claro" id="csv">Descargar CSV</button>
+    </div>
+  </div>
+
+  <div class="card grafica">
+    <div class="leyenda"><span style="--k:#E5484D">Temperatura</span><span style="--k:#3B7BE8">Punto de rocío</span><span style="--k:#F08C2E">Sensación</span><span style="--k:#17A2B0">Humedad (eje dcho.)</span></div>
+    <div id="g1"></div>
+  </div>
+  <div class="card grafica" style="margin-top:14px">
+    <div class="leyenda"><span style="--k:#22A55B">Velocidad</span><span style="--k:#9BCB6B">Racha</span><span class="punto-ley" style="--k:#F0A020">Dirección (eje dcho.)</span></div>
+    <div id="g2"></div>
+  </div>
+  <div class="card grafica" style="margin-top:14px">
+    <div class="leyenda"><span style="--k:#8B5CF6">Presión</span><span style="--k:#17A2B0">Precipitación acumulada del día (eje dcho.)</span></div>
+    <div id="g3"></div>
+  </div>
+  <div class="card grafica" style="margin-top:14px" id="caja-sol">
+    <div class="leyenda"><span style="--k:#E5A11A">Radiación solar</span><span style="--k:#C2412D">Índice UV (eje dcho.)</span></div>
+    <div id="g4"></div>
+  </div>
+</main>
+
+<script src="assets/comun.js"></script>
+<script>
+montarCabecera("Gráficas");
+document.title = `Gráficas | ${CONFIG.nombre}`;
+$("nom").textContent = CONFIG.estacion;
+$("desc").textContent = `${CONFIG.equipo}, ${CONFIG.altitud} m`;
+
+let historico = [], horas = 24;
+
+function dibujar() {
+  const t1 = Date.now() / 1000, t0 = t1 - horas * 3600;
+  const s = k => historico.map(e => [e.t, e[k]]);
+  grafica("g1", { t0, t1, alto: 300,
+    izq: { unidad: "°C", series: [{ pts: s("dew"), color: "#3B7BE8" }, { pts: s("feels"), color: "#F08C2E", ancho: 1.4 }, { pts: s("temp"), color: "#E5484D" }] },
+    der: { unidad: "%", min: 0, max: 100, dec: 0, series: [{ pts: s("hum"), color: "#17A2B0", ancho: 1.6 }] } });
+  grafica("g2", { t0, t1, alto: 260,
+    izq: { unidad: "km/h", cero: true, rango: 10, dec: 0, series: [{ pts: s("gust"), color: "#9BCB6B", ancho: 1.2, raya: "3 2" }, { pts: s("wind"), color: "#22A55B", ancho: 1.6 }] },
+    der: { unidad: "°", min: 0, max: 360, dec: 0, series: [{ pts: s("dir"), color: "#F0A020", puntos: true }] } });
+  grafica("g3", { t0, t1, alto: 260,
+    izq: { unidad: "hPa", rango: 4, series: [{ pts: s("press"), color: "#8B5CF6" }] },
+    der: { unidad: "mm", cero: true, rango: 2, series: [{ pts: s("rday"), color: "#17A2B0", area: true, ancho: 1.6 }] } });
+  const haySol = historico.some(e => e.solar != null);
+  $("caja-sol").hidden = !haySol;
+  if (haySol) grafica("g4", { t0, t1, alto: 240,
+    izq: { unidad: "W/m²", cero: true, rango: 100, dec: 0, series: [{ pts: s("solar"), color: "#E5A11A", area: true }] },
+    der: { unidad: "UV", cero: true, rango: 5, dec: 0, series: [{ pts: s("uvi"), color: "#C2412D", ancho: 1.4 }] } });
+}
+
+document.querySelectorAll("#rango button").forEach(b => b.onclick = () => {
+  document.querySelectorAll("#rango button").forEach(x => x.classList.toggle("on", x === b));
+  horas = +b.dataset.h; dibujar();
+});
+
+$("csv").onclick = () => {
+  const cols = ["temp", "feels", "dew", "hum", "press", "wind", "gust", "dir", "rate", "rday", "solar", "uvi"];
+  const t0 = Date.now() / 1000 - horas * 3600;
+  const lineas = ["fecha_local;" + cols.join(";")].concat(historico.filter(e => e.t >= t0).map(e =>
+    `${fechaCorta(e.t)} ${hora(e.t)};` + cols.map(k => e[k] ?? "").join(";")));
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([lineas.join("\n")], { type: "text/csv" }));
+  a.download = `estacion_${horas}h.csv`; a.click();
+};
+
+(async () => { historico = await cargarJSON("data/history.json", []); dibujar(); })();
+document.addEventListener("tema", dibujar);
+</script>
+</body>
+</html>

@@ -1,0 +1,344 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Meteo</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌾</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="stylesheet" href="assets/estilo.css">
+</head>
+<body>
+
+<!-- ===== Portada ===== -->
+<section class="hero" id="hero">
+  <svg class="monte" viewBox="0 0 1440 300" preserveAspectRatio="none" aria-hidden="true" id="monte">
+    <path d="M0 190 C240 160 420 175 640 165 S1080 150 1440 175 V300 H0Z" fill="#B49A5E" opacity=".8"/>
+    <path d="M0 230 C300 205 560 225 820 212 S1200 200 1440 222 V300 H0Z" fill="#7C8A45"/>
+    <path d="M0 262 C360 248 720 262 1080 252 S1320 250 1440 258 V300 H0Z" fill="#55652F"/>
+  </svg>
+  <div class="wrap">
+    <div>
+      <span class="pastilla"><span class="punto" id="punto-hero"></span>Datos en directo</span>
+      <h1 id="h-titulo">Meteo</h1>
+      <p class="lema" id="h-lema"></p>
+      <div class="botones">
+        <a class="btn primario" href="#ahora">Ver datos actuales</a>
+        <a class="btn cristal" href="#pronostico">Ver pronóstico</a>
+      </div>
+    </div>
+    <div class="tarjeta-hero" id="tarjeta-hero">
+      <div class="fila1">
+        <div><div class="t" id="h-temp">--°</div><div class="sub" id="h-sub">Cargando…</div></div>
+        <div class="cielo" id="h-cielo"></div>
+      </div>
+      <div class="mini">
+        <div><small>Humedad</small><b id="h-hum">--</b></div>
+        <div><small>Viento</small><b id="h-viento">--</b></div>
+        <div><small>Lluvia hoy</small><b id="h-lluvia">--</b></div>
+      </div>
+      <img id="h-webcam" alt="Imagen de la webcam" hidden>
+    </div>
+  </div>
+</section>
+
+<main class="wrap">
+  <div id="aviso"></div>
+
+  <!-- ===== Ahora ===== -->
+  <section class="bloque" id="ahora">
+    <div class="titulo-bloque">
+      <div><h2 id="t-ahora">Ahora</h2><p id="ultima">Última actualización: --</p></div>
+      <a class="btn claro" href="graficas.html">Ver gráficas ↗</a>
+    </div>
+    <div class="ahora">
+      <article class="card"><div class="cab-card">${icono("temp")}Temperatura</div><div class="valor" id="a-temp">--</div><div class="lineas" id="a-temp-l"></div><div id="s-temp"></div></article>
+      <article class="card"><div class="cab-card">${icono("hum")}Humedad</div><div class="valor" id="a-hum">--</div><div class="lineas" id="a-hum-l"></div><div id="s-hum"></div></article>
+      <article class="card"><div class="cab-card">${icono("viento")}Viento</div><div class="valor" id="a-viento">--</div><div class="lineas" id="a-viento-l"></div><div id="s-viento"></div></article>
+      <article class="card"><div class="cab-card">${icono("pres")}Presión</div><div class="valor" id="a-pres">--</div><div class="lineas" id="a-pres-l"></div><div id="s-pres"></div></article>
+      <article class="card"><div class="cab-card">${icono("lluvia")}Precipitación</div><div class="valor" id="a-lluvia">--</div><div class="lineas" id="a-lluvia-l"></div><div id="s-lluvia"></div></article>
+    </div>
+
+    <details class="todos" style="margin-top:16px">
+      <summary class="card">Todos los datos de la estación <span>Mostrar</span></summary>
+      <div class="rejilla-datos" id="todos"></div>
+    </details>
+  </section>
+
+  <!-- ===== Pronóstico ===== -->
+  <section class="bloque" id="pronostico">
+    <div class="titulo-bloque">
+      <div><h2>Pronóstico</h2><p>Modelos numéricos vía Open‑Meteo para la ubicación de la estación</p></div>
+    </div>
+    <div class="card pad">
+      <div class="etiqueta" style="margin-top:0">Próximas 24 horas</div>
+      <div class="tira" id="p-horas"><p class="vacio">Cargando pronóstico…</p></div>
+      <div class="etiqueta">Próximos días</div>
+      <div class="dias" id="p-dias"></div>
+    </div>
+  </section>
+
+  <!-- ===== Radar ===== -->
+  <section class="bloque" id="radar">
+    <div class="titulo-bloque">
+      <div><h2>Radar de precipitación</h2><p>Últimas dos horas, animado</p></div>
+      <a class="btn claro" href="https://www.aemet.es/es/eltiempo/observacion/radar" target="_blank" rel="noopener">Radar de AEMET ↗</a>
+    </div>
+    <div class="card">
+      <div id="mapa" class="mapa"></div>
+      <div class="barra-radar">
+        <button class="redondo" id="r-play" aria-label="Pausar o reproducir">❚❚</button>
+        <input type="range" id="r-slider" min="0" max="0" value="0" aria-label="Momento del radar">
+        <span class="sello" id="r-hora">--:--</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Sol y luna ===== -->
+  <section class="bloque" id="cielo">
+    <div class="titulo-bloque"><div><h2>Sol y luna</h2><p>Horas de luz y fase lunar para esta noche</p></div></div>
+    <div class="card pad">
+      <div class="astro">
+        <div class="caja"><h4>LUNA</h4><div class="luna-grande" id="luna-hoy"></div></div>
+        <div class="caja"><h4>SOL</h4><table class="tabla-datos" id="sol" style="margin-top:0"></table></div>
+        <div class="caja"><h4>NUBOSIDAD ESTA NOCHE</h4><div id="nubes-noche" class="valor" style="margin:10px 0 4px">--</div><div class="nota" id="nubes-txt"></div></div>
+      </div>
+      <div class="etiqueta">Fase lunar, próximos 14 días</div>
+      <div class="tira lunas" id="lunas"></div>
+    </div>
+  </section>
+
+  <!-- ===== Calidad del aire ===== -->
+  <section class="bloque" id="aire">
+    <div class="titulo-bloque"><div><h2>Calidad del aire y polen</h2><p>Índice europeo (EAQI) y previsión por horas, modelo CAMS</p></div></div>
+    <div class="card pad aire">
+      <div class="aqi" id="aqi"><span class="nota">Cargando…</span></div>
+      <div class="etiqueta">Evolución por horas</div>
+      <div class="tira" id="aire-horas"></div>
+      <p class="nota">Contaminantes en µg/m³, polen en granos/m³.</p>
+    </div>
+  </section>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="assets/comun.js"></script>
+<script>
+montarCabecera("Inicio");
+document.title = `${CONFIG.nombre}: el tiempo en ${CONFIG.ubicacion}`;
+// Rellena los iconos escritos como ${icono("...")} en el HTML
+document.querySelectorAll(".cab-card").forEach(el => el.innerHTML = el.innerHTML.replace(/\$\{icono\("(\w+)"\)\}/g, (_, n) => icono(n)));
+$("h-titulo").textContent = CONFIG.nombre;
+$("h-lema").textContent = CONFIG.lema;
+$("t-ahora").textContent = `${CONFIG.estacion}, ahora`;
+
+// Foto de portada propia, si existe
+const foto = new Image();
+foto.onload = () => { $("hero").style.backgroundImage = `url(${CONFIG.foto_portada})`; $("monte").style.display = "none"; };
+foto.src = CONFIG.foto_portada;
+if (CONFIG.webcam) { $("h-webcam").src = CONFIG.webcam + "?v=" + Date.now(); $("h-webcam").hidden = false; }
+
+/* ---------- Datos de la estación ---------- */
+let pronostico = null;
+
+function pintarEstacion(c, h) {
+  const n = c.now, hoy = c.today || {}, mes = c.month || {}, ano = c.year || {};
+  const min = Math.round((Date.now() / 1000 - c.updated) / 60);
+  const viejo = min > CONFIG.datos_viejos_min;
+  $("punto-hero").classList.toggle("off", viejo);
+  $("ultima").textContent = `Última actualización: ${fechaCorta(c.updated)} ${hora(c.updated)} (hace ${min < 1 ? "instantes" : min + " min"})`;
+  $("aviso").innerHTML = viejo ? `<div class="card aviso"><b>No llegan datos nuevos desde hace ${min} minutos.</b> Comprueba que la consola tiene wifi y que la acción de GitHub se está ejecutando.</div>` : "";
+
+  // Portada
+  $("h-temp").textContent = `${fmt(n.temp)}°`;
+  $("h-sub").textContent = `Sensación ${fmt(n.feels)}°  |  máx ${fmt(hoy.tmax?.v)}°  mín ${fmt(hoy.tmin?.v)}°`;
+  $("h-hum").textContent = `${fmt(n.hum, 0)} %`;
+  $("h-viento").textContent = `${fmt(n.wind, 0)} km/h ${dirTxt(n.dir)}`;
+  $("h-lluvia").textContent = `${fmt(n.rday)} mm`;
+
+  // Tarjetas "ahora"
+  const tr = c.press_trend_3h, trTxt = tr == null ? "sin datos" : tr > 1 ? "Subiendo" : tr < -1 ? "Bajando" : "Estable";
+  $("a-temp").innerHTML = `${fmt(n.temp)}<small>°C</small>`;
+  $("a-temp-l").innerHTML = `Sensación térmica ${fmt(n.feels)} °C<br>Mínima ${fmt(hoy.tmin?.v)} °C, máxima ${fmt(hoy.tmax?.v)} °C`;
+  $("a-hum").innerHTML = `${fmt(n.hum, 0)}<small>%</small>`;
+  $("a-hum-l").innerHTML = `Máxima ${fmt(hoy.hmax?.v, 0)} %, mínima ${fmt(hoy.hmin?.v, 0)} %<br>Punto de rocío ${fmt(n.dew)} °C`;
+  $("a-viento").innerHTML = `${fmt(n.wind, 0)}<small>km/h</small>`;
+  $("a-viento-l").innerHTML = `Dirección ${dirTxt(n.dir)} (${n.dir != null ? Math.round(n.dir) : "--"}°)<br>Racha máx. hoy ${fmt(hoy.gustmax?.v)} km/h`;
+  $("a-pres").innerHTML = `${fmt(n.press)}<small>hPa</small>`;
+  $("a-pres-l").innerHTML = `Tendencia ${trTxt}${tr != null ? ` (${tr > 0 ? "+" : ""}${fmt(tr)})` : ""}<br>Mín. ${fmt(hoy.pmin?.v)}, máx. ${fmt(hoy.pmax?.v)}`;
+  $("a-lluvia").innerHTML = `${fmt(n.rday)}<small>mm</small>`;
+  $("a-lluvia-l").innerHTML = `Intensidad actual ${fmt(n.rate)} mm/h<br>Máx. intensidad ${fmt(hoy.ratemax?.v)} mm/h`;
+
+  const t24 = Date.now() / 1000 - 86400, s = k => h.filter(e => e.t >= t24).map(e => [e.t, e[k]]);
+  $("s-temp").innerHTML = sparkline(s("temp"));
+  $("s-hum").innerHTML = sparkline(s("hum"));
+  $("s-viento").innerHTML = sparkline(s("wind"));
+  $("s-pres").innerHTML = sparkline(s("press"));
+  $("s-lluvia").innerHTML = sparkline(s("rday"));
+
+  // Todos los datos
+  const ps = psicrometria(n.temp, n.hum, n.press);
+  const tarjeta = (ic, titulo, grande, cuerpo) => `<article class="card pad"><div class="cab-card">${icono(ic)}${titulo}</div>${grande ? `<div class="valor">${grande}</div>` : ""}<table class="tabla-datos">${cuerpo}</table></article>`;
+  const fx = (o, d = 1, u = "") => o ? `${fmt(o.v, d)}${u}` : "--";
+  $("todos").innerHTML = [
+    `<article class="card pad"><div class="cab-card">${icono("info")}Información</div>
+      <p style="margin:14px 0 0"><b style="font-size:1.05rem">${CONFIG.estacion}</b><br><span class="nota" style="font-size:.88rem">${CONFIG.ubicacion}<br>${CONFIG.equipo}<br>Altitud: ${CONFIG.altitud} m</span></p>
+      <span class="estado-on ${viejo ? "off" : ""}"><span class="punto ${viejo ? "off" : ""}"></span>${viejo ? "Sin conexión" : "En línea"}</span>
+      <table class="tabla-datos">${filas([["Última obs. (local)", `${fechaCorta(c.updated)} ${hora(c.updated)}`], ["Antigüedad", min < 1 ? "hace instantes" : `hace ${min} min`]])}</table></article>`,
+    tarjeta("temp", "Temperatura", `${fmt(n.temp)} °C`, filas([
+      ["Sensación térmica", `${fmt(n.feels)} °C`], ["Punto de rocío", `${fmt(n.dew)} °C`],
+      ["Máx. hoy", fx(hoy.tmax, 1, " °C")], ["Mín. hoy", fx(hoy.tmin, 1, " °C")],
+      ["Máx. mensual", fx(mes.tmax, 1, " °C")], ["Mín. mensual", fx(mes.tmin, 1, " °C")],
+      ["Máx. anual", fx(ano.tmax, 1, " °C")], ["Mín. anual", fx(ano.tmin, 1, " °C")]])),
+    tarjeta("hum", "Humedad", `${fmt(n.hum, 0)} %`, filas([
+      ["Punto de rocío", `${fmt(n.dew)} °C`], ["Hum. específica", `${fmt(ps.especifica)} g/kg`],
+      ["Hum. absoluta", `${fmt(ps.absoluta)} g/m³`], ["Presión de vapor", `${fmt(ps.vapor, 0)} hPa`],
+      ["Máx. hoy", fx(hoy.hmax, 0, " %")], ["Mín. hoy", fx(hoy.hmin, 0, " %")],
+      ["Máx. mensual", fx(mes.hmax, 0, " %")], ["Mín. mensual", fx(mes.hmin, 0, " %")]])),
+    tarjeta("viento", "Viento", `${fmt(n.wind, 0)} km/h`, filas([
+      ["Dirección", `${flecha(n.dir)} ${dirTxt(n.dir)} (${n.dir != null ? Math.round(n.dir) : "--"}°)`], ["Racha actual", `${fmt(n.gust)} km/h`],
+      ["Racha máx. hoy", fx(hoy.gustmax, 1, " km/h")], ["Racha máx. mensual", fx(mes.gmax, 1, " km/h")], ["Racha máx. anual", fx(ano.gmax, 1, " km/h")]])),
+    tarjeta("lluvia", "Precipitación", `${fmt(n.rday)} mm`, filas([
+      ["Intensidad actual", `${fmt(n.rate)} mm/h`], ["Máx. intensidad hoy", fx(hoy.ratemax, 1, " mm/h")],
+      ["Este mes", `${fmt(n.rmonth)} mm`], ["Este año", `${fmt(n.ryear)} mm`]])),
+    tarjeta("pres", "Presión", `${fmt(n.press)} hPa`, filas([
+      ["Tendencia 3 h", trTxt], ["Mín. hoy", fx(hoy.pmin, 1, " hPa")], ["Máx. hoy", fx(hoy.pmax, 1, " hPa")],
+      ["Máx. anual", fx(ano.pmax, 1, " hPa")], ["Mín. anual", fx(ano.pmin, 1, " hPa")]])),
+    (n.solar != null || n.uvi != null) && tarjeta("sol", "Radiación solar", `${fmt(n.solar, 0)} W/m²`, filas([["Índice UV", fmt(n.uvi, 0)]])),
+    n.tin != null && tarjeta("temp", "Interior", `${fmt(n.tin)} °C`, filas([["Humedad interior", `${fmt(n.hin, 0)} %`]]))
+  ].filter(Boolean).join("");
+}
+
+async function cargarEstacion() {
+  const c = await cargarJSON("data/current.json");
+  if (!c) {
+    $("aviso").innerHTML = `<div class="card aviso"><b>Aún no hay datos.</b> En la pestaña Actions del repositorio, ejecuta «Actualizar datos de la estación» con el botón Run workflow.</div>`;
+    $("h-sub").textContent = "Sin datos todavía";
+    return;
+  }
+  pintarEstacion(c, await cargarJSON("data/history.json", []));
+}
+
+/* ---------- Pronóstico (Open-Meteo) ---------- */
+async function cargarPronostico() {
+  const url = `https://api.open-meteo.com/v1/forecast?latitude=${CONFIG.lat}&longitude=${CONFIG.lon}&elevation=${CONFIG.altitud}` +
+    `&hourly=temperature_2m,precipitation,precipitation_probability,weather_code,wind_speed_10m,wind_direction_10m,cloud_cover,is_day` +
+    `&daily=weather_code,temperature_2m_max,temperature_2m_min,apparent_temperature_max,apparent_temperature_min,precipitation_sum,precipitation_probability_max,wind_speed_10m_max,wind_gusts_10m_max,wind_direction_10m_dominant,cloud_cover_mean,sunrise,sunset,daylight_duration` +
+    `&timezone=${encodeURIComponent(CONFIG.zona)}&forecast_days=7&wind_speed_unit=kmh`;
+  try {
+    const r = await fetch(url); if (!r.ok) throw 0;
+    pronostico = await r.json();
+  } catch (e) {
+    $("p-horas").innerHTML = `<p class="vacio">No se ha podido cargar el pronóstico ahora mismo.</p>`;
+    return;
+  }
+  const H = pronostico.hourly, D = pronostico.daily;
+  const ahora = Date.now();
+  let i0 = H.time.findIndex(t => new Date(t).getTime() > ahora - 3600000); if (i0 < 0) i0 = 0;
+  let html = "";
+  for (let i = i0; i < Math.min(i0 + 24, H.time.length); i++) {
+    const hh = H.time[i].slice(11, 16), [ic] = cieloWMO(H.weather_code[i], H.is_day[i]);
+    html += `<div class="hora"><b class="h">${hh === "00:00" ? new Date(H.time[i]).toLocaleDateString("es-ES", { weekday: "short" }) : hh}</b>
+      <span class="ic">${ic}</span><span class="tt">${Math.round(H.temperature_2m[i])}°</span>
+      <span>💧 ${fmt(H.precipitation[i])} mm</span><span>${H.precipitation_probability[i] ?? "--"} %</span>
+      <span>${flecha(H.wind_direction_10m[i])} ${Math.round(H.wind_speed_10m[i])} km/h</span></div>`;
+  }
+  $("p-horas").innerHTML = html;
+
+  $("p-dias").innerHTML = D.time.map((t, i) => {
+    const f = new Date(t + "T12:00"), [ic, txt] = cieloWMO(D.weather_code[i]);
+    const nom = i === 0 ? "Hoy" : f.toLocaleDateString("es-ES", { weekday: "short" }).replace(/^./, m => m.toUpperCase());
+    return `<div class="card dia"><div class="nom">${nom}</div><div class="fec">${f.toLocaleDateString("es-ES", { day: "numeric", month: "short" })}</div>
+      <span class="ic" title="${txt}">${ic}</span><div class="mm"><span class="mx">${Math.round(D.temperature_2m_max[i])}°</span><span class="mn">${Math.round(D.temperature_2m_min[i])}°</span></div>
+      <table>${filas([["Sens.", `${Math.round(D.apparent_temperature_max[i])}/${Math.round(D.apparent_temperature_min[i])} °C`],
+        ["Precip.", `${fmt(D.precipitation_sum[i])} mm, ${D.precipitation_probability_max[i] ?? "--"} %`],
+        ["Viento", `${Math.round(D.wind_speed_10m_max[i])} km/h ${dirTxt(D.wind_direction_10m_dominant[i])}`],
+        ["Racha", `${Math.round(D.wind_gusts_10m_max[i])} km/h`], ["Nubes", `${Math.round(D.cloud_cover_mean[i])} %`]])}</table></div>`;
+  }).join("");
+
+  // Icono del cielo en la portada (pronóstico de la hora actual)
+  $("h-cielo").textContent = cieloWMO(H.weather_code[i0], H.is_day[i0])[0];
+  pintarAstro();
+}
+
+/* ---------- Sol y luna ---------- */
+function pintarAstro() {
+  const l = luna();
+  $("luna-hoy").innerHTML = `<span class="em">${l.em}</span><div><b style="font-size:1.1rem">${l.nombre}</b><br><span class="nota">Iluminación ${Math.round(l.ilum * 100)} %, ${fmt(l.edad, 1)} días</span></div>`;
+  let lunas = "";
+  for (let d = 0; d < 14; d++) {
+    const f = new Date(Date.now() + d * 86400000), x = luna(f);
+    lunas += `<div class="hora"><b class="h">${d === 0 ? "Hoy" : f.toLocaleDateString("es-ES", { weekday: "short", day: "numeric" })}</b><span class="ic">${x.em}</span><span>${Math.round(x.ilum * 100)} %</span></div>`;
+  }
+  $("lunas").innerHTML = lunas;
+  if (!pronostico) return;
+  const D = pronostico.daily, H = pronostico.hourly;
+  const h = s => s.slice(11, 16), dur = D.daylight_duration[0];
+  $("sol").innerHTML = filas([["Salida del sol", h(D.sunrise[0])], ["Puesta del sol", h(D.sunset[0])],
+    ["Horas de luz", `${Math.floor(dur / 3600)} h ${Math.round(dur % 3600 / 60)} min`], ["Salida mañana", h(D.sunrise[1])]]);
+  // Nubosidad media entre las 22 y las 4 h
+  const hoy = D.time[0], manana = D.time[1];
+  const idx = H.time.map((t, i) => [t, i]).filter(([t]) => (t.startsWith(hoy) && t.slice(11, 13) >= "22") || (t.startsWith(manana) && t.slice(11, 13) <= "04")).map(([, i]) => i);
+  if (idx.length) {
+    const nub = Math.round(idx.reduce((a, i) => a + H.cloud_cover[i], 0) / idx.length);
+    $("nubes-noche").textContent = `${nub} %`;
+    $("nubes-txt").textContent = nub < 20 ? "Noche despejada: buena para observar." : nub < 60 ? "Nubes a ratos: observación irregular." : "Mayormente cubierto: mala noche para observar.";
+  }
+}
+
+/* ---------- Calidad del aire (Open-Meteo / CAMS) ---------- */
+function categoriaEAQI(v) {
+  const c = [[20, "Buena", "#50F0E6"], [40, "Razonablemente buena", "#50CCAA"], [60, "Regular", "#F0E641"], [80, "Mala", "#FF5050"], [100, "Muy mala", "#C8325A"], [1e9, "Extremadamente mala", "#B47DDC"]];
+  return c.find(x => v <= x[0]);
+}
+async function cargarAire() {
+  const url = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${CONFIG.lat}&longitude=${CONFIG.lon}` +
+    `&hourly=european_aqi,pm2_5,pm10,ozone,nitrogen_dioxide,grass_pollen,olive_pollen,birch_pollen,mugwort_pollen` +
+    `&timezone=${encodeURIComponent(CONFIG.zona)}&forecast_days=2`;
+  let A;
+  try { const r = await fetch(url); if (!r.ok) throw 0; A = (await r.json()).hourly; }
+  catch (e) { $("aqi").innerHTML = `<span class="nota">No se ha podido cargar la calidad del aire ahora mismo.</span>`; return; }
+  let i0 = A.time.findIndex(t => new Date(t).getTime() > Date.now() - 3600000); if (i0 < 0) i0 = 0;
+  const v = A.european_aqi[i0], [, nom, col] = categoriaEAQI(v ?? 0);
+  $("aqi").style.background = col;
+  $("aqi").innerHTML = `<span class="n">${v ?? "--"}</span><div><b>${nom}</b><br><span style="font-size:.88rem">Índice europeo de calidad del aire para esta hora</span></div>`;
+  const val = (k, i, d = 1) => A[k] && A[k][i] != null ? fmt(A[k][i], d) : "--";
+  let html = "";
+  for (let i = i0; i < Math.min(i0 + 24, A.time.length); i++) {
+    const [, , c] = categoriaEAQI(A.european_aqi[i] ?? 0);
+    html += `<div class="hora"><b class="h">${A.time[i].slice(11, 16)}</b><span class="chip" style="background:${c}">${A.european_aqi[i] ?? "--"}</span>
+      <table><tr><td class="grupo" colspan="2">CONTAMINANTES</td></tr>${filas([["PM2.5", val("pm2_5", i)], ["PM10", val("pm10", i)], ["O₃", val("ozone", i, 0)], ["NO₂", val("nitrogen_dioxide", i)]])}
+      <tr><td class="grupo" colspan="2">POLEN</td></tr>${filas([["Gramíneas", val("grass_pollen", i, 0)], ["Olivo", val("olive_pollen", i, 0)], ["Abedul", val("birch_pollen", i, 0)], ["Artemisa", val("mugwort_pollen", i, 0)]])}</table></div>`;
+  }
+  $("aire-horas").innerHTML = html;
+}
+
+/* ---------- Radar (RainViewer + Leaflet) ---------- */
+async function montarRadar() {
+  if (!window.L) { $("mapa").innerHTML = `<p class="vacio">No se ha podido cargar el mapa.</p>`; return; }
+  const mapa = L.map("mapa", { scrollWheelZoom: false, maxZoom: 9 }).setView([CONFIG.lat, CONFIG.lon], 7);
+  L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", { attribution: "© OpenStreetMap, © CARTO", subdomains: "abcd" }).addTo(mapa);
+  L.circleMarker([CONFIG.lat, CONFIG.lon], { radius: 7, color: "#fff", weight: 2, fillColor: "#E5484D", fillOpacity: 1 }).addTo(mapa).bindTooltip(CONFIG.estacion);
+  let frames;
+  try {
+    const r = await fetch("https://api.rainviewer.com/public/weather-maps.json"); const j = await r.json();
+    frames = j.radar.past.map(f => ({ t: f.time, capa: L.tileLayer(`${j.host}${f.path}/256/{z}/{x}/{y}/2/1_1.png`, { opacity: 0, maxNativeZoom: 7, attribution: "Radar: RainViewer" }) }));
+  } catch (e) { $("r-hora").textContent = "Radar no disponible"; return; }
+  frames.forEach(f => f.capa.addTo(mapa));
+  const sl = $("r-slider"); sl.max = frames.length - 1;
+  let i = frames.length - 1, timer = null;
+  const ver = k => { frames.forEach((f, j) => f.capa.setOpacity(j === k ? .75 : 0)); sl.value = k; $("r-hora").textContent = hora(frames[k].t); i = k; };
+  const play = () => { timer = setInterval(() => ver((i + 1) % frames.length), 700); $("r-play").textContent = "❚❚"; };
+  const pausa = () => { clearInterval(timer); timer = null; $("r-play").textContent = "▶"; };
+  sl.oninput = () => { pausa(); ver(+sl.value); };
+  $("r-play").onclick = () => timer ? pausa() : play();
+  ver(i); play();
+}
+
+cargarEstacion(); cargarPronostico(); cargarAire(); montarRadar();
+setInterval(cargarEstacion, 5 * 60000);
+document.addEventListener("tema", cargarEstacion);
+</script>
+</body>
+</html>

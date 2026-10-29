@@ -1,0 +1,2 @@
+Sube aquí tu propia foto de portada con el nombre portada.jpg (por ejemplo, una foto de tu pueblo, de unos 1600 px de ancho).
+Si no hay foto, la portada muestra un paisaje dibujado.
