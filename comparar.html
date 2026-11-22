@@ -1,0 +1,409 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Modelos</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌾</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/estilo.css?v=3">
+<style>
+  .controles { display: flex; flex-direction: column; gap: 10px; margin: 22px 0 14px; }
+  .controles .selector { flex-wrap: wrap; border-radius: 16px; }
+  .leyenda-cmp { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
+  .chip { display: inline-flex; align-items: center; gap: 7px; border: 1px solid var(--line); background: var(--card); color: var(--ink);
+          border-radius: 99px; padding: 5px 12px; font: 600 .82rem var(--font); cursor: pointer; }
+  .chip i { width: 14px; height: 4px; border-radius: 2px; background: var(--k); }
+  .chip.obs i { height: 10px; width: 10px; border-radius: 50%; }
+  .chip.off { opacity: .4; }
+  .grupo-ley { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; width: 100%; }
+  .grupo-ley > span { font-size: .72rem; font-weight: 800; letter-spacing: .04em; color: var(--muted); text-transform: uppercase; min-width: 92px; }
+  .chip.off i { background: var(--muted); }
+  .chip small { color: var(--muted); font-weight: 500; }
+  .lienzo { position: relative; }
+  .lienzo svg { width: 100%; height: auto; display: block; touch-action: pan-y; }
+  .lienzo svg text { font-family: var(--font); font-size: 12px; fill: var(--muted); }
+  .tip { position: absolute; top: 8px; pointer-events: none; background: var(--card); border: 1px solid var(--line); box-shadow: var(--shadow);
+         border-radius: 12px; padding: 9px 12px; font-size: .8rem; min-width: 170px; z-index: 2; }
+  .tip b.h { display: block; margin-bottom: 4px; }
+  .tip div { display: flex; justify-content: space-between; gap: 14px; }
+  .tip div span::before { content: ""; display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: var(--k); margin-right: 6px; }
+  .tip div b { font-variant-numeric: tabular-nums; }
+  .ranking { display: grid; gap: 10px; margin-top: 12px; }
+  .fila-rk { display: grid; grid-template-columns: 150px 1fr 120px; align-items: center; gap: 12px; font-size: .9rem; }
+  .fila-rk .barra { height: 10px; border-radius: 99px; background: var(--line); overflow: hidden; }
+  .fila-rk .barra i { display: block; height: 100%; background: var(--k); border-radius: 99px; }
+  .fila-rk .num { text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .fila-rk .num small { color: var(--muted); font-weight: 500; display: block; font-size: .75rem; }
+  .medalla { font-size: .72rem; font-weight: 800; color: #167A41; background: #E3F6EA; border-radius: 99px; padding: 1px 8px; margin-left: 6px; }
+  @media (max-width: 600px) { .fila-rk { grid-template-columns: 105px 1fr 92px; font-size: .82rem; } }
+  .sel { font: 600 .85rem var(--font); color: var(--ink); background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 6px 10px; }
+  .modelos-info { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; margin-top: 12px; }
+  .modelos-info div { background: var(--bg); border: 1px solid var(--line); border-radius: 12px; padding: 11px 13px; font-size: .84rem; color: var(--muted); }
+  .modelos-info b { color: var(--ink); display: block; }
+</style>
+</head>
+<body>
+<main class="wrap">
+  <div class="cabecera-pag"><h1>Comparar modelos</h1><p>Lo que predicen los modelos meteorológicos frente a lo que miden las estaciones</p></div>
+
+  <div class="controles">
+    <div class="selector" id="variables"></div>
+    <div class="selector" id="periodo">
+      <button data-p="p24">Últimas 24 h</button><button data-p="pasado">Últimas 48 h</button><button data-p="ambos" class="on">48 h atrás y 3 días adelante</button><button data-p="futuro">Próximos 3 días</button>
+    </div>
+  </div>
+
+  <div class="card grafica">
+    <div class="leyenda-cmp" id="leyenda"></div>
+    <div class="lienzo" id="lienzo"><p class="vacio">Cargando modelos…</p></div>
+    <p class="nota" id="nota-var" style="margin:6px 0 0"></p>
+  </div>
+
+  <section class="bloque" style="margin-top:28px">
+    <div class="titulo-bloque"><div><h2 style="font-size:1.35rem">¿Qué modelo acierta más?</h2><p id="rk-desc">Error medio de cada modelo en las últimas 48 horas</p></div>
+      <label class="nota" style="display:flex;align-items:center;gap:8px" hidden>Comparar con <select id="rk-ref" class="sel"></select></label></div>
+    <div class="card pad"><div class="ranking" id="ranking"></div><p class="nota" id="rk-nota" style="margin:12px 0 0"></p></div>
+  </section>
+
+  <section class="bloque" style="margin-top:28px">
+    <div class="titulo-bloque"><div><h2 style="font-size:1.35rem">Los modelos</h2><p>Los modelos se consultan para la ubicación de la estación a través de Open‑Meteo; debajo, las estaciones con las que se comparan</p></div></div>
+    <div class="modelos-info" id="modelos-info"></div>
+  </section>
+</main>
+
+<script src="assets/comun.js?v=3"></script>
+<script>
+montarCabecera("Modelos");
+document.title = `Comparar modelos | ${CONFIG.nombre}`;
+
+/* ---------- Qué se compara ---------- */
+// grupo "fina": modelos regionales de alta resolución; "global": modelos de todo el planeta
+const MODELOS = [
+  { id: ["meteofrance_arome_france_hd"], nombre: "AROME HD", res: "1,3 km", grupo: "fina", color: "#F59E0B", info: "Météo‑France. El de más detalle; cubre la mitad norte de la península y prevé unos 2 días." },
+  { id: ["meteofrance_arome_france"], nombre: "AROME", res: "2,5 km", grupo: "fina", color: "#EA580C", info: "Météo‑France. Muy bueno para tormentas y efectos del terreno; hasta unos 2 días." },
+  { id: ["dmi_harmonie_arome_europe"], nombre: "HARMONIE DMI", res: "2 km", grupo: "fina", color: "#0F766E", info: "HARMONIE‑AROME del servicio danés, con dominio europeo. Primo hermano del que usa AEMET." },
+  { id: ["knmi_harmonie_arome_europe"], nombre: "HARMONIE KNMI", res: "5,5 km", grupo: "fina", color: "#DB2777", info: "HARMONIE‑AROME del servicio neerlandés, dominio europeo." },
+  { id: ["icon_eu"], nombre: "ICON‑EU", res: "7 km", grupo: "fina", color: "#65A30D", info: "Servicio alemán (DWD), versión europea." },
+  { id: ["meteofrance_arpege_europe"], nombre: "ARPEGE", res: "10 km", grupo: "fina", color: "#CA8A04", info: "Météo‑France, versión europea. Llega más lejos que AROME, hasta 4 días." },
+  { id: ["ecmwf_ifs025", "ecmwf_ifs"], nombre: "ECMWF", res: "25 km", grupo: "global", color: "#2563EB", info: "Centro Europeo (IFS). El modelo global de referencia." },
+  { id: ["gfs_seamless", "gfs_global"], nombre: "GFS", res: "13–25 km", grupo: "global", color: "#DC2626", info: "Servicio Meteorológico de EE. UU. (NOAA)." },
+  { id: ["icon_global"], nombre: "ICON", res: "13 km", grupo: "global", color: "#16A34A", info: "Servicio alemán (DWD), versión global." },
+  { id: ["ukmo_global_deterministic_10km", "ukmo_seamless"], nombre: "UKMO", res: "10 km", grupo: "global", color: "#0891B2", info: "Met Office británico, versión global." },
+];
+// Estaciones con las que se compara: la propia y las vecinas que guarda el Worker (se rellena al cargar)
+const COLORES_EST = ["#8B5CF6", "#92400E", "#475569", "#BE185D", "#4D7C0F", "#7E22CE", "#9A3412"];
+const RED_TXT = { wu: "Weather Underground", aemet: "AEMET", meteoclimatic: "Meteoclimatic" };
+const RED_CORTA = { wu: "WU", aemet: "AEMET", meteoclimatic: "Meteoclimatic" };
+let OBS = [], estadoVecinas = [], refNombre = null;
+// var: id del modelo en Open‑Meteo; est / mc: campo en los datos de las estaciones (null si no lo mide)
+const VARIABLES = [
+  { k: "temp", nombre: "Temperatura", u: "°C", var: "temperature_2m", est: "temp", mc: "temp", dec: 1 },
+  { k: "hum", nombre: "Humedad", u: "%", var: "relative_humidity_2m", est: "hum", mc: "hum", dec: 0, min: 0, max: 100 },
+  { k: "dew", nombre: "Punto de rocío", u: "°C", var: "dew_point_2m", est: "dew", mc: "dew", dec: 1 },
+  { k: "press", nombre: "Presión", u: "hPa", var: "pressure_msl", est: "press", mc: "press", dec: 1 },
+  { k: "wind", nombre: "Viento", u: "km/h", var: "wind_speed_10m", est: "wind", mc: "wind", dec: 0, cero: true },
+  { k: "gust", nombre: "Rachas", u: "km/h", var: "wind_gusts_10m", est: "gust", mc: null, dec: 0, cero: true },
+  { k: "dir", nombre: "Dirección del viento", u: "°", var: "wind_direction_10m", est: "dir", mc: "dir", dec: 0, min: 0, max: 360, puntos: true },
+  { k: "rain", nombre: "Lluvia acumulada", u: "mm", var: "precipitation", est: "rain", mc: "rain", dec: 1, cero: true, acumulada: true },
+  { k: "solar", nombre: "Radiación solar", u: "W/m²", var: "shortwave_radiation", est: "solar", mc: null, dec: 0, cero: true },
+];
+
+let modelos = {};          // nombre -> { t: [...], var: [...] }
+let estacion = [];
+let variable = VARIABLES[0], periodo = "ambos";
+const ocultas = new Set();
+try { JSON.parse(localStorage.getItem("cmp-ocultas") || "[]").forEach(n => ocultas.add(n)); } catch (e) {}
+
+/* ---------- Carga de datos ---------- */
+async function cargarModelo(m) {
+  const vars = VARIABLES.map(v => v.var).join(",");
+  for (const id of m.id) {
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${CONFIG.lat}&longitude=${CONFIG.lon}&elevation=${CONFIG.altitud}` +
+      `&hourly=${vars}&models=${id}&past_days=2&forecast_days=4&timeformat=unixtime&wind_speed_unit=kmh`;
+    try {
+      const r = await fetch(url); if (!r.ok) continue;
+      const h = (await r.json()).hourly;
+      // Los modelos regionales devuelven valores vacíos fuera de su zona: entonces no se usan
+      if (h && h.time && h.time.length && (h.temperature_2m || []).some(x => x != null)) { modelos[m.nombre] = h; return; }
+    } catch (e) {}
+  }
+}
+
+const rocio = (T, H) => {
+  if (T == null || H == null || H <= 0) return null;
+  const g = Math.log(H / 100) + 17.62 * T / (243.12 + T);
+  return Math.round(243.12 * g / (17.62 - g) * 10) / 10;
+};
+
+// Convierte la lluvia «del día» (que se reinicia a medianoche) en incrementos por punto
+function incrementosLluvia(puntos) {
+  const out = [];
+  for (let i = 1; i < puntos.length; i++) {
+    const a = puntos[i - 1].rday, b = puntos[i].rday;
+    if (a == null || b == null) continue;
+    out.push([puntos[i].t, b >= a ? b - a : b]);
+  }
+  return out;
+}
+
+async function cargarTodo() {
+  const [h, mc, vec] = await Promise.all([
+    cargarJSON("data/history.json", []),
+    cargarJSON("data/meteoclimatic.json", []),
+    cargarJSON("data/estaciones.json", []),
+    ...MODELOS.map(cargarModelo),
+  ]);
+  estacion = h || [];
+  estadoVecinas = Array.isArray(vec) ? vec : [];
+  const conRocio = pts => pts.map(p => ({ ...p, dew: p.dew ?? rocio(p.temp, p.hum) }));
+  OBS = [{ nombre: "Mi estación", color: "--ink", red: "propia", datos: estacion }];
+  const vecinas = estadoVecinas.filter(e => e.puntos && e.puntos.length).sort((a, b) => (a.km ?? 999) - (b.km ?? 999));
+  vecinas.forEach((e, i) => OBS.push({ nombre: e.nombre || e.id, id: e.id, red: e.red, km: e.km, color: COLORES_EST[i % COLORES_EST.length], datos: conRocio(e.puntos) }));
+  // Ugena por Meteoclimatic solo si no llega ya por Weather Underground
+  const mcPts = conRocio(mc || []);
+  if (mcPts.length && !vecinas.some(e => e.id === "IUGENA2"))
+    OBS.push({ nombre: "Ugena", red: "meteoclimatic", km: 7.6, color: COLORES_EST[vecinas.length % COLORES_EST.length], datos: mcPts });
+  montarControles();
+  dibujar();
+}
+
+/* ---------- Series para la variable elegida ---------- */
+function ventana() {
+  const ahora = Date.now() / 1000;
+  // un pequeño margen a la derecha para que el último dato no quede pegado al borde
+  if (periodo === "p24") return [ahora - 24 * 3600, ahora + 900];
+  if (periodo === "pasado") return [ahora - 48 * 3600, ahora + 1800];
+  if (periodo === "futuro") return [ahora - 3 * 3600, ahora + 72 * 3600];
+  return [ahora - 48 * 3600, ahora + 72 * 3600];
+}
+
+function acumular(incrementos, t0) {
+  let total = 0; const out = [];
+  for (const [t, v] of incrementos) { if (t <= t0) continue; total += v; out.push([t, Math.round(total * 10) / 10]); }
+  return out;
+}
+
+function series() {
+  const [t0, t1] = ventana(), v = variable, lista = [];
+  for (const m of MODELOS) {
+    const h = modelos[m.nombre]; if (!h || !h[v.var]) continue;
+    let pts = h.time.map((t, i) => [t, h[v.var][i]]).filter(p => p[1] != null && p[0] >= t0 - 3600 && p[0] <= t1);
+    if (v.acumulada) pts = acumular(pts, t0);
+    if (pts.length) lista.push({ nombre: m.nombre, color: m.color, res: m.res, grupo: m.grupo, pts, hueco: 4000, ancho: 1.8, tol: 1800 });
+  }
+  for (const o of OBS) {
+    const d = o.datos;
+    let pts;
+    if (v.acumulada) {
+      // AEMET da la lluvia de cada hora; las demás, la acumulada del día
+      pts = d.some(p => p.p1h != null) ? acumular(d.filter(p => p.p1h != null).map(p => [p.t, p.p1h]), t0) : acumular(incrementosLluvia(d), t0);
+    } else pts = d.filter(p => p[v.est] != null).map(p => [p.t, p[v.est]]);
+    pts = pts.filter(p => p[0] >= t0 && p[0] <= t1);
+    const propia = o.red === "propia";
+    const res = propia ? "" : `${RED_CORTA[o.red] || ""}${o.km != null ? " · " + fmt(o.km, 0) + " km" : ""}`;
+    // Las vecinas pueden tener datos horarios (AEMET y el histórico inicial de WU): huecos de hasta ~1 h no cortan la línea
+    if (pts.length) lista.push({ nombre: o.nombre, color: o.color, res, pts, obs: true, propia, ancho: propia ? 2.8 : 2.2, hueco: propia ? 1900 : 4000, tol: propia ? 900 : 1900 });
+  }
+  return lista;
+}
+
+/* ---------- Controles ---------- */
+function montarControles() {
+  $("variables").innerHTML = VARIABLES.map(v => `<button data-k="${v.k}" class="${v === variable ? "on" : ""}">${v.nombre}</button>`).join("");
+  document.querySelectorAll("#variables button").forEach(b => b.onclick = () => {
+    variable = VARIABLES.find(v => v.k === b.dataset.k);
+    document.querySelectorAll("#variables button").forEach(x => x.classList.toggle("on", x === b));
+    dibujar();
+  });
+  document.querySelectorAll("#periodo button").forEach(b => b.onclick = () => {
+    periodo = b.dataset.p;
+    document.querySelectorAll("#periodo button").forEach(x => x.classList.toggle("on", x === b));
+    dibujar();
+  });
+  $("modelos-info").innerHTML = MODELOS.map(m => `<div style="border-left:4px solid ${m.color}"><b>${m.nombre} · ${m.res}${modelos[m.nombre] ? "" : " (sin datos aquí ahora)"}</b>${m.info}</div>`).join("") +
+    `<div style="border-left:4px solid var(--line)"><b>¿Y el HARMONIE de AEMET?</b>No está disponible en Open‑Meteo. Los HARMONIE de Dinamarca y Países Bajos son el mismo modelo con otra configuración y otra zona de cálculo.</div>` +
+    OBS.filter(o => o.red !== "propia").map(o => {
+      const e = estadoVecinas.find(x => x.id === o.id), mal = e && e.estado && e.estado !== "ok";
+      const txt = o.red === "aemet" ? "Estación oficial. Datos cada hora." : o.red === "wu" ? "Estación de aficionado. Datos cada 10 minutos." : "Estación de aficionado. Datos cada 10 minutos (sin histórico previo).";
+      return `<div style="border-left:4px solid ${o.color}"><b>${o.nombre} · ${RED_TXT[o.red] || o.red}${o.km != null ? ` · ${fmt(o.km, 0)} km` : ""}</b>${txt}${mal ? ` <span style="color:var(--hot)">Último intento con error.</span>` : ""}</div>`;
+    }).join("");
+}
+
+function montarLeyenda(lista) {
+  const chip = s => {
+    const col = s.color.startsWith("--") ? `var(${s.color})` : s.color;
+    return `<button class="chip ${s.obs ? "obs" : ""} ${ocultas.has(s.nombre) ? "off" : ""}" data-n="${s.nombre}" style="--k:${col}" aria-pressed="${!ocultas.has(s.nombre)}"><i></i>${s.nombre}${s.res ? ` <small>${s.res}</small>` : ""}</button>`;
+  };
+  const grupo = (titulo, items) => items.length ? `<div class="grupo-ley"><span>${titulo}</span>${items.map(chip).join("")}</div>` : "";
+  $("leyenda").innerHTML = grupo("Medido", lista.filter(s => s.obs)) +
+    grupo("Rejilla fina", lista.filter(s => s.grupo === "fina")) + grupo("Globales", lista.filter(s => s.grupo === "global"));
+  document.querySelectorAll("#leyenda .chip").forEach(b => b.onclick = () => {
+    const n = b.dataset.n; ocultas.has(n) ? ocultas.delete(n) : ocultas.add(n);
+    try { localStorage.setItem("cmp-ocultas", JSON.stringify([...ocultas])); } catch (e) {}
+    dibujar();
+  });
+}
+
+/* ---------- Gráfica ---------- */
+let geo = null;
+function dibujar() {
+  const lista = series(), v = variable, [t0, t1] = ventana(), ahora = Date.now() / 1000;
+  montarLeyenda(lista);
+  const visibles = lista.filter(s => !ocultas.has(s.nombre));
+  const notas = [];
+  const campoEst = v.acumulada ? "rday" : v.est;
+  if (campoEst && !estacion.some(p => p[campoEst] != null)) notas.push("Tu estación no tiene datos de esta variable en este periodo.");
+  if (v.acumulada) notas.push("Lluvia sumada desde el inicio del periodo mostrado.");
+  const mcObs = OBS.find(o => o.red === "meteoclimatic");
+  if (mcObs && mcObs.datos[0].t > t0 + 1800) {
+    const desde = new Date(mcObs.datos[0].t * 1000).toLocaleString("es-ES", { weekday: "short", day: "numeric", hour: "2-digit", minute: "2-digit", timeZone: CONFIG.zona });
+    notas.push(`Ugena (Meteoclimatic): datos desde el ${desde}; Meteoclimatic no publica histórico.`);
+  }
+  $("nota-var").textContent = notas.join(" ");
+
+  const vals = visibles.flatMap(s => s.pts.map(p => p[1]));
+  if (vals.length < 2) { $("lienzo").innerHTML = `<p class="vacio">No hay datos para mostrar con esta selección.</p>`; geo = null; ranking(); return; }
+  // La gráfica se dibuja al ancho real de la pantalla, así el texto nunca queda diminuto
+  const W = Math.max(320, Math.round($("lienzo").clientWidth || 1000)), H = W < 600 ? 300 : 380, P = { l: 44, r: 12, t: 30, b: 30 };
+  let lo = v.min ?? Math.min(...vals), hi = v.max ?? Math.max(...vals);
+  if (v.cero) lo = 0;
+  if (hi - lo < 2) hi = lo + 2;
+  if (v.min == null && !v.cero) { const p = (hi - lo) * .08; lo -= p; hi += p; } else if (v.max == null) hi += (hi - lo) * .08;
+  const x = t => P.l + (t - t0) / (t1 - t0) * (W - P.l - P.r);
+  const y = val => H - P.b - (val - lo) / (hi - lo) * (H - P.t - P.b);
+  const linea = css("--line");
+  let s = "";
+  // fondo del futuro
+  if (ahora < t1) s += `<rect x="${x(Math.max(ahora, t0))}" y="${P.t}" width="${x(t1) - x(Math.max(ahora, t0))}" height="${H - P.t - P.b}" fill="${css("--accent")}" opacity=".06"/>`;
+  const marcas = v.k === "dir" ? [[0, "N"], [90, "E"], [180, "S"], [270, "O"], [360, "N"]]
+    : Array.from({ length: 6 }, (_, i) => { const val = lo + (hi - lo) * i / 5; return [val, fmt(val, hi - lo < 8 ? 1 : 0)]; });
+  for (const [val, et] of marcas) {
+    const yy = y(val);
+    s += `<line x1="${P.l}" x2="${W - P.r}" y1="${yy}" y2="${yy}" stroke="${linea}"/><text x="${P.l - 8}" y="${yy + 4}" text-anchor="end">${et}</text>`;
+  }
+  if (v.k !== "dir") s += `<text x="${P.l - 8}" y="${P.t - 12}" text-anchor="end" font-weight="600">${v.u}</text>`;
+  const pxHora = (W - P.l - P.r) / ((t1 - t0) / 3600), paso = [3, 6, 12, 24].find(h => h * pxHora >= 62) || 24;
+  for (let t = Math.ceil(t0 / 3600) * 3600; t < t1; t += 3600) {
+    const hh = Number(new Date(t * 1000).toLocaleString("es-ES", { hour: "numeric", hour12: false, timeZone: CONFIG.zona })) % 24;
+    if (hh % paso) continue;
+    const et = hh === 0 ? new Date(t * 1000).toLocaleDateString("es-ES", { weekday: "short", day: "numeric", timeZone: CONFIG.zona }) : String(hh).padStart(2, "0") + ":00";
+    s += `<line x1="${x(t)}" x2="${x(t)}" y1="${P.t}" y2="${H - P.b}" stroke="${linea}" stroke-dasharray="${hh === 0 ? "" : "3 4"}"/><text x="${x(t)}" y="${H - 9}" text-anchor="middle" ${hh === 0 ? 'font-weight="700"' : ""}>${et}</text>`;
+  }
+  if (ahora > t0 && ahora < t1) s += `<line x1="${x(ahora)}" x2="${x(ahora)}" y1="${P.t}" y2="${H - P.b}" stroke="${css("--accent")}" stroke-width="1.5"/><text x="${x(ahora) > W - 70 ? x(ahora) - 5 : x(ahora) + 5}" y="${P.t + 12}" text-anchor="${x(ahora) > W - 70 ? "end" : "start"}" font-weight="700" style="fill:${css("--accent-ink")}">ahora</text>`;
+  // modelos debajo, observaciones encima (recortadas al área de la gráfica)
+  s += `<clipPath id="area-g"><rect x="${P.l}" y="${P.t - 4}" width="${W - P.l - P.r}" height="${H - P.t - P.b + 8}"/></clipPath><g clip-path="url(#area-g)">`;
+  for (const se of [...visibles.filter(q => !q.obs), ...visibles.filter(q => q.obs)]) {
+    const col = se.color.startsWith("--") ? css(se.color) : se.color;
+    if (v.puntos) { s += se.pts.map(p => `<circle cx="${x(p[0]).toFixed(1)}" cy="${y(p[1]).toFixed(1)}" r="${se.obs ? 2.2 : 2.6}" fill="${col}" opacity="${se.obs ? .9 : .75}"/>`).join(""); continue; }
+    let d = "", prev = null;
+    for (const [t, val] of se.pts) { d += (prev != null && t - prev < se.hueco ? "L" : "M") + x(t).toFixed(1) + " " + y(val).toFixed(1); prev = t; }
+    s += `<path d="${d}" fill="none" stroke="${col}" stroke-width="${se.ancho}" stroke-linejoin="round" stroke-linecap="round" opacity="${se.obs ? 1 : .9}"/>`;
+    // Puntos sueltos (p. ej. cuando una estación lleva poco tiempo registrándose): se dibujan como círculos
+    se.pts.forEach(([t, val], i) => {
+      const solo = (i === 0 || t - se.pts[i - 1][0] >= se.hueco) && (i === se.pts.length - 1 || se.pts[i + 1][0] - t >= se.hueco);
+      if (solo || se.pts.length < 6) s += `<circle cx="${x(t).toFixed(1)}" cy="${y(val).toFixed(1)}" r="4" fill="${col}"/>`;
+    });
+  }
+  s += `</g><line id="cursor" x1="0" x2="0" y1="${P.t}" y2="${H - P.b}" stroke="${css("--muted")}" stroke-dasharray="2 3" visibility="hidden"/>`;
+  $("lienzo").innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${v.nombre}: modelos y estaciones">${s}</svg><div class="tip" id="tip" hidden></div>`;
+  geo = { W, P, t0, t1, x, visibles, v };
+  activarCursor();
+  ranking();
+}
+
+function valorEn(se, t) {
+  let mejor = null;
+  for (const p of se.pts) { const d = Math.abs(p[0] - t); if (d <= se.tol && (!mejor || d < mejor.d)) mejor = { d, v: p[1] }; }
+  return mejor ? mejor.v : null;
+}
+
+function activarCursor() {
+  const svg = document.querySelector("#lienzo svg"), tip = $("tip"), cur = document.getElementById("cursor");
+  const mover = ev => {
+    if (!geo) return;
+    const caja = svg.getBoundingClientRect(), px = ((ev.touches ? ev.touches[0].clientX : ev.clientX) - caja.left) / caja.width * geo.W;
+    if (px < geo.P.l || px > geo.W - geo.P.r) { tip.hidden = true; cur.setAttribute("visibility", "hidden"); return; }
+    const t = geo.t0 + (px - geo.P.l) / (geo.W - geo.P.l - geo.P.r) * (geo.t1 - geo.t0);
+    const filas = geo.visibles.map(se => [se, valorEn(se, t)]).filter(([, val]) => val != null);
+    if (!filas.length) { tip.hidden = true; cur.setAttribute("visibility", "hidden"); return; }
+    cur.setAttribute("x1", px); cur.setAttribute("x2", px); cur.setAttribute("visibility", "visible");
+    const fecha = new Date(t * 1000).toLocaleString("es-ES", { weekday: "short", day: "numeric", hour: "2-digit", minute: "2-digit", timeZone: CONFIG.zona });
+    tip.innerHTML = `<b class="h">${fecha}</b>` + filas.map(([se, val]) => {
+      const col = se.color.startsWith("--") ? `var(${se.color})` : se.color;
+      const txt = geo.v.k === "dir" ? `${dirTxt(val)} ${Math.round(val)}°` : `${fmt(val, geo.v.dec)} ${geo.v.u}`;
+      return `<div><span style="--k:${col}">${se.nombre}</span><b>${txt}</b></div>`;
+    }).join("");
+    tip.hidden = false;
+    const xp = px / geo.W * caja.width, ancho = tip.offsetWidth;
+    let izq = xp + 14 + ancho > caja.width ? xp - ancho - 14 : xp + 14;
+    tip.style.left = Math.max(0, Math.min(izq, caja.width - ancho)) + "px";
+  };
+  svg.addEventListener("mousemove", mover);
+  svg.addEventListener("touchmove", mover, { passive: true });
+  svg.addEventListener("touchstart", mover, { passive: true });
+  svg.addEventListener("mouseleave", () => { tip.hidden = true; cur.setAttribute("visibility", "hidden"); });
+}
+
+/* ---------- ¿Qué modelo acierta más? ---------- */
+function ranking() {
+  // Con las últimas 24 h si se ha elegido ese periodo; si no, con las últimas 48 h
+  const horas = periodo === "p24" ? 24 : 48;
+  const v = variable, ahora = Date.now() / 1000, t0 = ahora - horas * 3600;
+  const periodoAntes = periodo; periodo = horas === 24 ? "p24" : "pasado";
+  const listaPasado = series(); periodo = periodoAntes;
+  // Referencia: la estación elegida; si no hay elección (o no mide esta variable), tu estación y, si no, la vecina más cercana
+  const validas = listaPasado.filter(s => s.obs && s.pts.length >= (s.propia ? 20 : 6));
+  const ref = validas.find(s => s.nombre === refNombre) || validas.find(s => s.propia) || validas[0] || null;
+  $("rk-ref").innerHTML = validas.map(s => `<option ${s === ref ? "selected" : ""}>${s.nombre}</option>`).join("");
+  $("rk-ref").parentElement.hidden = validas.length < 2;
+  $("rk-desc").textContent = v.acumulada
+    ? `Diferencia entre la lluvia prevista y la medida en las últimas ${horas} horas`
+    : `Error medio de cada modelo en las últimas ${horas} horas (${v.nombre.toLowerCase()})`;
+  if (!ref) {
+    $("ranking").innerHTML = `<p class="vacio" style="padding:14px 0">Aún no hay suficientes observaciones de las estaciones para comparar esta variable.</p>`;
+    $("rk-nota").textContent = ""; return;
+  }
+  const filas = [];
+  for (const m of listaPasado.filter(s => !s.obs)) {
+    let suma = 0, sesgo = 0, n = 0;
+    if (v.acumulada) {
+      const fin = m.pts.filter(p => p[0] <= ahora).at(-1), finRef = ref.pts.at(-1);
+      if (fin && finRef) { suma = Math.abs(fin[1] - finRef[1]); sesgo = fin[1] - finRef[1]; n = 1; }
+    } else {
+      for (const [t, val] of m.pts) {
+        if (t < t0 || t > ahora) continue;
+        const o = valorEn(ref, t); if (o == null) continue;
+        let d = val - o;
+        if (v.k === "dir") d = ((d + 540) % 360) - 180;
+        suma += Math.abs(d); sesgo += d; n++;
+      }
+    }
+    if (n) filas.push({ nombre: m.nombre, color: m.color, err: suma / n, sesgo: sesgo / n, n });
+  }
+  if (!filas.length) { $("ranking").innerHTML = `<p class="vacio" style="padding:14px 0">No hay datos de los modelos para el pasado reciente.</p>`; return; }
+  filas.sort((a, b) => a.err - b.err);
+  const peor = Math.max(...filas.map(f => f.err)) || 1;
+  $("rk-desc").textContent = v.acumulada
+    ? `Diferencia entre la lluvia prevista y la medida en las últimas ${horas} horas`
+    : `Error medio de cada modelo en las últimas ${horas} horas (${v.nombre.toLowerCase()})`;
+  $("ranking").innerHTML = filas.map((f, i) => {
+    const sesgoTxt = v.k === "dir" ? "" : `${f.sesgo > 0 ? "por exceso" : "por defecto"} ${fmt(Math.abs(f.sesgo), v.dec)}`;
+    return `<div class="fila-rk"><div><b>${f.nombre}</b>${i === 0 ? '<span class="medalla">mejor</span>' : ""}</div>
+      <div class="barra"><i style="--k:${f.color};width:${Math.max(4, f.err / peor * 100)}%"></i></div>
+      <div class="num">±${fmt(f.err, v.dec)} ${v.u}<small>${sesgoTxt}</small></div></div>`;
+  }).join("");
+  $("rk-nota").textContent = `Comparado con ${ref.propia ? "lo que mide tu estación" : `lo que mide la estación de ${ref.nombre}`}. ` +
+    (v.acumulada || v.k === "dir" ? "" : "«Por exceso» significa que el modelo suele dar valores más altos que los medidos. ") +
+    `Con solo ${horas} horas, el resultado cambia mucho de un día a otro.`;
+}
+
+cargarTodo();
+$("rk-ref").onchange = ev => { refNombre = ev.target.value; ranking(); };
+document.addEventListener("tema", dibujar);
+let ancho = innerWidth;
+addEventListener("resize", () => { if (Math.abs(innerWidth - ancho) > 40) { ancho = innerWidth; dibujar(); } });
+</script>
+</body>
+</html>
