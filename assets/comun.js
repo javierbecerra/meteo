@@ -53,7 +53,7 @@ const icono = n => `<div class="icono"><svg viewBox="0 0 24 24" fill="none" stro
 
 /* ===== Cabecera común ===== */
 function montarCabecera(activa) {
-  const enlaces = [["index.html", "Inicio"], ["index.html#pronostico", "Pronóstico"], ["graficas.html", "Gráficas"], ["historico.html", "Histórico"], ["index.html#radar", "Radar"], ["index.html#cielo", "Sol y luna"]];
+  const enlaces = [["index.html", "Inicio"], ["index.html#pronostico", "Pronóstico"], ["graficas.html", "Gráficas"], ["comparar.html", "Modelos"], ["historico.html", "Histórico"], ["index.html#radar", "Radar"], ["index.html#cielo", "Sol y luna"]];
   const logo = `<svg viewBox="0 0 40 40" aria-hidden="true"><rect width="40" height="40" rx="11" fill="var(--accent)"/><path d="M20 7l-7 11h4l-5 8h16l-5-8h4z" fill="#fff"/><path d="M8 31c4-2.5 8 2.5 12 0s8 2.5 12 0" stroke="#fff" stroke-width="2.2" fill="none" stroke-linecap="round"/></svg>`;
   document.body.insertAdjacentHTML("afterbegin", DEFS_ICONOS);
   document.body.insertAdjacentHTML("afterbegin", `
