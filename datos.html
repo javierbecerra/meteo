@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Datos</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌾</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/estilo.css?v=3">
+<style>
+  .archivo { display: flex; flex-wrap: wrap; gap: 10px 28px; align-items: center; }
+  .archivo .dato b { display: block; font-size: 1.25rem; letter-spacing: -.01em; }
+  .archivo .dato span { color: var(--muted); font-size: .82rem; }
+  .elegir { display: flex; flex-direction: column; gap: 12px; margin: 22px 0 16px; }
+  .elegir .selector { flex-wrap: wrap; border-radius: 16px; }
+  .fechas { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  .fechas label { font-size: .85rem; color: var(--muted); display: flex; align-items: center; gap: 8px; }
+  .fechas input[type=date] { font: 500 .9rem var(--font); color: var(--ink); background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 7px 10px; }
+  .resumen { display: grid; grid-template-columns: repeat(auto-fit, minmax(145px, 1fr)); gap: 12px; margin-bottom: 14px; }
+  .resumen .card { padding: 14px 16px; }
+  .resumen .k { color: var(--muted); font-size: .8rem; font-weight: 600; }
+  .resumen .v { font-size: 1.55rem; font-weight: 800; letter-spacing: -.02em; margin: 4px 0 2px; }
+  .resumen .v small { font-size: .55em; color: var(--muted); font-weight: 700; margin-left: 2px; }
+  .resumen .c { color: var(--muted); font-size: .78rem; }
+  .descargas { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  .progreso { flex-basis: 100%; height: 8px; border-radius: 99px; background: var(--line); overflow: hidden; }
+  .progreso i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--accent), #6AA8E8); transition: width .2s; }
+  .modo { display: inline-block; font-size: .75rem; font-weight: 700; border-radius: 99px; padding: 2px 10px; background: var(--accent-soft); color: var(--accent-ink); margin-left: 8px; vertical-align: middle; }
+</style>
+</head>
+<body>
+<main class="wrap">
+  <div class="cabecera-pag"><h1>Datos de la estación</h1><p>Todo lo que ha medido la estación: consulta cualquier periodo, mira sus gráficas y descárgalo</p></div>
+
+  <div class="card pad archivo" style="margin-top:22px" id="archivo">
+    <div class="dato"><b id="a-desde">--</b><span>datos desde</span></div>
+    <div class="dato"><b id="a-dias">--</b><span>días en el archivo</span></div>
+    <div class="dato"><b>5 min</b><span>un dato cada</span></div>
+    <div class="descargas" style="margin-left:auto">
+      <button class="btn claro" id="bajar-todo">Descargar todo el archivo (CSV)</button>
+      <button class="btn claro" id="bajar-diarios">Resúmenes diarios (CSV)</button>
+    </div>
+    <div class="progreso" id="prog-todo" hidden><i></i></div>
+  </div>
+
+  <div class="elegir">
+    <div class="selector" id="rapidos">
+      <button data-r="hoy" class="on">Hoy</button><button data-r="ayer">Ayer</button><button data-r="7d">Últimos 7 días</button>
+      <button data-r="mes">Este mes</button><button data-r="mesant">Mes anterior</button><button data-r="anio">Este año</button>
+    </div>
+    <div class="fechas">
+      <label>Desde <input type="date" id="f-desde"></label>
+      <label>Hasta <input type="date" id="f-hasta"></label>
+      <button class="btn claro" id="ver">Ver periodo</button>
+    </div>
+  </div>
+
+  <div class="titulo-bloque">
+    <div><h2 id="t-periodo" style="font-size:1.3rem">--</h2><p id="d-periodo"></p></div>
+    <div class="descargas"><button class="btn claro" id="bajar-periodo">Descargar este periodo (CSV)</button></div>
+    <div class="progreso" id="prog-periodo" hidden><i></i></div>
+  </div>
+
+  <div class="resumen" id="resumen"></div>
+  <div id="graficas"></div>
+</main>
+
+<script src="assets/comun.js?v=3"></script>
+<script>
+montarCabecera("Datos");
+document.title = `Datos | ${CONFIG.nombre}`;
+
+/* ---------- Fechas en hora local de la estación ---------- */
+const fmtISO = new Intl.DateTimeFormat("en-CA", { timeZone: CONFIG.zona, year: "numeric", month: "2-digit", day: "2-digit" });
+const hoyISO = () => fmtISO.format(new Date());
+const isoDe = t => fmtISO.format(new Date(t * 1000));
+// Segundos Unix de las 00:00 locales de una fecha "AAAA-MM-DD"
+function inicioDia(iso) {
+  const [a, m, d] = iso.split("-").map(Number);
+  let t = Date.UTC(a, m - 1, d) / 1000;
+  for (let i = 0; i < 2; i++) {
+    const p = Object.fromEntries(new Intl.DateTimeFormat("en-US", { timeZone: CONFIG.zona, hourCycle: "h23", year: "numeric", month: "numeric", day: "numeric", hour: "numeric", minute: "numeric" })
+      .formatToParts(new Date(t * 1000)).map(x => [x.type, x.value]));
+    const local = Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour, +p.minute) / 1000;
+    t += Date.UTC(a, m - 1, d) / 1000 - local;
+  }
+  return t;
+}
+const sumarDias = (iso, n) => { const [a, m, d] = iso.split("-").map(Number); return new Date(Date.UTC(a, m - 1, d + n)).toISOString().slice(0, 10); };
+const textoFecha = iso => new Date(iso + "T12:00").toLocaleDateString("es-ES", { day: "numeric", month: "long", year: "numeric" });
+
+/* ---------- Archivo ---------- */
+let limites = {}, diario = {};
+async function cargarArchivo() {
+  [limites, diario] = await Promise.all([cargarJSON("data/obs-limites", {}), cargarJSON("data/daily.json", {})]);
+  const dias = Object.keys(diario);
+  const desdeISO = limites.desde ? isoDe(limites.desde) : null;
+  $("a-desde").textContent = desdeISO ? textoFecha(desdeISO) : "--";
+  $("a-dias").textContent = dias.length || "--";
+  $("f-desde").min = $("f-hasta").min = dias[0] || desdeISO || "";
+  $("f-desde").max = $("f-hasta").max = hoyISO();
+}
+
+/* ---------- Descarga de observaciones por tramos de 31 días ---------- */
+async function obsEntre(desde, hasta, alProgresar) {
+  const filas = [], tramo = 31 * 86400;
+  let cols = null, n = 0, total = Math.ceil((hasta - desde) / tramo);
+  for (let a = desde; a < hasta; a += tramo) {
+    const b = Math.min(a + tramo - 1, hasta);
+    const r = await cargarJSON(`data/obs?desde=${a}&hasta=${b}`, null);
+    if (!r || !r.cols) throw new Error("No se han podido leer los datos");
+    cols = r.cols; filas.push(...r.filas);
+    if (alProgresar) alProgresar(++n / total);
+  }
+  return { cols: cols || ["t"], filas };
+}
+
+const COLS_CSV = { temp: "temperatura_C", feels: "sensacion_C", dew: "rocio_C", hum: "humedad_pct", press: "presion_hPa", wind: "viento_kmh", gust: "racha_kmh",
+  dir: "direccion_grados", rate: "intensidad_lluvia_mmh", rday: "lluvia_dia_mm", solar: "radiacion_Wm2", uvi: "uv", tin: "temp_interior_C", hin: "humedad_interior_pct" };
+const num = v => v == null ? "" : String(v).replace(".", ",");     // formato español para Excel
+const fechaHora = t => new Date(t * 1000).toLocaleString("es-ES", { timeZone: CONFIG.zona, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" }).replace(",", "");
+
+function guardarCSV(nombre, lineas) {
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob(["﻿" + lineas.join("\r\n")], { type: "text/csv;charset=utf-8" }));
+  a.download = nombre; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+}
+function csvObs({ cols, filas }) {
+  return ["fecha_hora_local;" + cols.slice(1).map(c => COLS_CSV[c] || c).join(";")]
+    .concat(filas.map(f => fechaHora(f[0]) + ";" + f.slice(1).map(num).join(";")));
+}
+async function descargar(boton, barra, desde, hasta, nombre) {
+  const txt = boton.textContent; boton.disabled = true; barra.hidden = false;
+  const relleno = barra.querySelector("i"); relleno.style.width = "0";
+  try {
+    const datos = await obsEntre(desde, hasta, p => { relleno.style.width = Math.round(p * 100) + "%"; boton.textContent = `Preparando… ${Math.round(p * 100)} %`; });
+    if (!datos.filas.length) { alerta(boton, "No hay datos en este periodo"); return; }
+    guardarCSV(nombre, csvObs(datos));
+  } catch (e) { alerta(boton, "No se ha podido descargar"); }
+  finally { boton.disabled = false; boton.textContent = txt; setTimeout(() => barra.hidden = true, 800); }
+}
+function alerta(boton, texto) { const t = boton.textContent; boton.textContent = texto; setTimeout(() => boton.textContent = t, 2500); }
+
+$("bajar-todo").onclick = () => {
+  const desde = limites.desde || inicioDia(Object.keys(diario)[0] || hoyISO());
+  descargar($("bajar-todo"), $("prog-todo"), desde, Math.floor(Date.now() / 1000), `estacion_completo_${hoyISO()}.csv`);
+};
+$("bajar-diarios").onclick = () => guardarCSV(`estacion_diarios_${hoyISO()}.csv`, csvDiario(Object.entries(diario)));
+function csvDiario(dias) {
+  const c = [["tmax", "temp_max_C"], ["tmin", "temp_min_C"], ["tavg", "temp_media_C"], ["hmax", "hum_max_pct"], ["hmin", "hum_min_pct"], ["gmax", "racha_max_kmh"],
+    ["rain", "lluvia_mm"], ["rmax", "intensidad_max_mmh"], ["pmax", "presion_max_hPa"], ["pmin", "presion_min_hPa"]];
+  return ["fecha;" + c.map(x => x[1]).join(";")].concat(dias.map(([f, d]) => fechaISO(f) + ";" + c.map(x => num(d[x[0]])).join(";")));
+}
+
+/* ---------- Periodo elegido ---------- */
+let periodo = null;
+function rapido(r) {
+  const hoy = hoyISO(), [a, m] = hoy.split("-");
+  if (r === "hoy") return [hoy, hoy];
+  if (r === "ayer") { const y = sumarDias(hoy, -1); return [y, y]; }
+  if (r === "7d") return [sumarDias(hoy, -6), hoy];
+  if (r === "mes") return [`${a}-${m}-01`, hoy];
+  if (r === "mesant") { const ini = new Date(Date.UTC(+a, +m - 2, 1)).toISOString().slice(0, 10); return [ini, sumarDias(`${a}-${m}-01`, -1)]; }
+  if (r === "anio") return [`${a}-01-01`, hoy];
+}
+document.querySelectorAll("#rapidos button").forEach(b => b.onclick = () => {
+  document.querySelectorAll("#rapidos button").forEach(x => x.classList.toggle("on", x === b));
+  const [d, h] = rapido(b.dataset.r); verPeriodo(d, h);
+});
+$("ver").onclick = () => {
+  let d = $("f-desde").value, h = $("f-hasta").value || hoyISO();
+  if (!d) d = h;
+  if (d > h) [d, h] = [h, d];
+  document.querySelectorAll("#rapidos button").forEach(x => x.classList.remove("on"));
+  verPeriodo(d, h);
+};
+$("bajar-periodo").onclick = () => {
+  if (!periodo) return;
+  descargar($("bajar-periodo"), $("prog-periodo"), periodo.t0, periodo.t1, `estacion_${periodo.d}_${periodo.h}.csv`);
+};
+
+async function verPeriodo(d, h) {
+  $("f-desde").value = d; $("f-hasta").value = h;
+  const t0 = inicioDia(d), t1 = Math.min(inicioDia(sumarDias(h, 1)) - 1, Math.floor(Date.now() / 1000));
+  const nDias = Math.round((inicioDia(sumarDias(h, 1)) - t0) / 86400);
+  periodo = { d, h, t0, t1 };
+  $("t-periodo").innerHTML = (d === h ? textoFecha(d) : `${textoFecha(d)} – ${textoFecha(h)}`) + `<span class="modo">${nDias <= 32 ? "cada 5 minutos" : "resumen diario"}</span>`;
+  $("d-periodo").textContent = nDias === 1 ? "1 día" : `${nDias} días`;
+  $("graficas").innerHTML = `<p class="vacio">Cargando…</p>`; $("resumen").innerHTML = "";
+  if (nDias <= 32) await vistaDetalle(t0, t1);
+  else vistaDiaria(d, h, t0, t1);
+}
+
+/* ---------- Vista detallada (hasta 32 días) ---------- */
+function tarjeta(k, v, u, c = "") { return `<div class="card"><div class="k">${k}</div><div class="v">${v}<small>${u}</small></div><div class="c">${c}</div></div>`; }
+const cuando = (t, varios) => t == null ? "" : varios ? new Date(t * 1000).toLocaleString("es-ES", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: CONFIG.zona }) : `a las ${hora(t)}`;
+
+async function vistaDetalle(t0, t1) {
+  let datos;
+  try { datos = await obsEntre(t0, t1); } catch (e) { $("graficas").innerHTML = `<p class="vacio">No se han podido cargar los datos.</p>`; return; }
+  const i = Object.fromEntries(datos.cols.map((c, k) => [c, k]));
+  const filas = datos.filas;
+  if (!filas.length) { $("graficas").innerHTML = `<div class="card pad"><p class="vacio">No hay datos guardados en este periodo. El archivo empieza el ${limites.desde ? textoFecha(isoDe(limites.desde)) : "día en que se activó"}.</p></div>`; return; }
+  const s = c => filas.map(f => [f[0], f[i[c]]]);
+  const varios = (t1 - t0) > 86400 * 1.1;
+
+  // Lluvia del periodo: suma de los incrementos de la lluvia diaria (que vuelve a 0 a medianoche)
+  let lluvia = 0; const lluviaAc = [];
+  for (let k = 1; k < filas.length; k++) {
+    const a = filas[k - 1][i.rday], b = filas[k][i.rday];
+    if (a != null && b != null) lluvia += b >= a ? b - a : b;
+    lluviaAc.push([filas[k][0], Math.round(lluvia * 10) / 10]);
+  }
+  const ext = (c, fn) => { let m = null; for (const f of filas) if (f[i[c]] != null && (!m || fn(f[i[c]], m[1]))) m = [f[0], f[i[c]]]; return m; };
+  const may = (a, b) => a > b, men = (a, b) => a < b;
+  const tmax = ext("temp", may), tmin = ext("temp", men), gmax = ext("gust", may), pmax = ext("press", may), pmin = ext("press", men), smax = ext("solar", may);
+  const temps = filas.map(f => f[i.temp]).filter(v => v != null);
+  $("resumen").innerHTML = [
+    tmax ? tarjeta("Temperatura máxima", fmt(tmax[1]), "°C", cuando(tmax[0], varios)) : "",
+    tmin ? tarjeta("Temperatura mínima", fmt(tmin[1]), "°C", cuando(tmin[0], varios)) : "",
+    temps.length ? tarjeta("Temperatura media", fmt(temps.reduce((a, b) => a + b, 0) / temps.length), "°C") : "",
+    tarjeta("Lluvia", fmt(lluvia), "mm", "en el periodo"),
+    gmax ? tarjeta("Racha máxima", fmt(gmax[1]), "km/h", cuando(gmax[0], varios)) : "",
+    pmax ? tarjeta("Presión máxima", fmt(pmax[1]), "hPa", `mínima ${fmt(pmin[1])} hPa`) : "",
+    smax && smax[1] > 0 ? tarjeta("Radiación máxima", fmt(smax[1], 0), "W/m²", cuando(smax[0], varios)) : "",
+    tarjeta("Datos", filas.length.toLocaleString("es-ES"), "", "registros cada 5 min"),
+  ].join("");
+
+  const hay = c => filas.some(f => f[i[c]] != null);
+  const bloques = [];
+  if (hay("temp") || hay("hum")) bloques.push(["g-t", '<span style="--k:#E5484D">Temperatura</span><span style="--k:#3B7BE8">Punto de rocío</span><span style="--k:#17A2B0">Humedad (eje dcho.)</span>']);
+  if (hay("wind")) bloques.push(["g-v", '<span style="--k:#22A55B">Viento</span><span style="--k:#9BCB6B">Racha</span><span class="punto-ley" style="--k:#F0A020">Dirección (eje dcho.)</span>']);
+  if (hay("press") || hay("rday")) bloques.push(["g-p", '<span style="--k:#8B5CF6">Presión</span><span style="--k:#17A2B0">Lluvia acumulada en el periodo (eje dcho.)</span>']);
+  if (hay("solar")) bloques.push(["g-s", '<span style="--k:#E5A11A">Radiación solar</span><span style="--k:#C2412D">Índice UV (eje dcho.)</span>']);
+  $("graficas").innerHTML = bloques.map(([id, ley], k) => `<div class="card grafica" style="margin-top:${k ? 14 : 0}px"><div class="leyenda">${ley}</div><div id="${id}"></div></div>`).join("");
+  const hueco = 1200;
+  if ($("g-t")) grafica("g-t", { t0, t1, alto: 300,
+    izq: { unidad: "°C", series: [{ pts: s("dew"), color: "#3B7BE8", hueco }, { pts: s("temp"), color: "#E5484D", hueco }] },
+    der: { unidad: "%", min: 0, max: 100, dec: 0, series: [{ pts: s("hum"), color: "#17A2B0", ancho: 1.5, hueco }] } });
+  if ($("g-v")) grafica("g-v", { t0, t1, alto: 260,
+    izq: { unidad: "km/h", cero: true, rango: 10, dec: 0, series: [{ pts: s("gust"), color: "#9BCB6B", ancho: 1.2, hueco }, { pts: s("wind"), color: "#22A55B", ancho: 1.6, hueco }] },
+    der: { unidad: "°", min: 0, max: 360, dec: 0, series: [{ pts: s("dir"), color: "#F0A020", puntos: true }] } });
+  if ($("g-p")) grafica("g-p", { t0, t1, alto: 260,
+    izq: { unidad: "hPa", rango: 4, series: [{ pts: s("press"), color: "#8B5CF6", hueco }] },
+    der: { unidad: "mm", cero: true, rango: 2, series: [{ pts: lluviaAc, color: "#17A2B0", area: true, ancho: 1.6, hueco }] } });
+  if ($("g-s")) grafica("g-s", { t0, t1, alto: 240,
+    izq: { unidad: "W/m²", cero: true, rango: 100, dec: 0, series: [{ pts: s("solar"), color: "#E5A11A", area: true, hueco }] },
+    der: { unidad: "UV", cero: true, rango: 5, dec: 0, series: [{ pts: s("uvi"), color: "#C2412D", ancho: 1.4, hueco }] } });
+}
+
+/* ---------- Vista diaria (periodos largos) ---------- */
+function vistaDiaria(d, h, t0, t1) {
+  const dias = Object.entries(diario).filter(([f]) => f >= d && f <= h);
+  if (!dias.length) { $("graficas").innerHTML = `<div class="card pad"><p class="vacio">No hay días guardados en este periodo.</p></div>`; return; }
+  const medio = f => inicioDia(f) + 43200;
+  t0 = Math.max(t0, inicioDia(dias[0][0])); // la gráfica empieza donde empiezan los datos
+  const s = c => dias.filter(([, x]) => x[c] != null).map(([f, x]) => [medio(f), x[c]]);
+  const ext = (c, fn) => dias.filter(([, x]) => x[c] != null).reduce((m, e) => !m || fn(e[1][c], m[1][c]) ? e : m, null);
+  const tmax = ext("tmax", (a, b) => a > b), tmin = ext("tmin", (a, b) => a < b), gmax = ext("gmax", (a, b) => a > b), rmax = ext("rain", (a, b) => a > b);
+  const lluvia = dias.reduce((a, [, x]) => a + (x.rain || 0), 0), conLluvia = dias.filter(([, x]) => (x.rain || 0) >= 0.2).length;
+  const medias = dias.map(([, x]) => x.tavg).filter(v => v != null);
+  const corta = f => new Date(f + "T12:00").toLocaleDateString("es-ES", { day: "numeric", month: "short" });
+  $("resumen").innerHTML = [
+    tmax ? tarjeta("Máxima absoluta", fmt(tmax[1].tmax), "°C", corta(tmax[0])) : "",
+    tmin ? tarjeta("Mínima absoluta", fmt(tmin[1].tmin), "°C", corta(tmin[0])) : "",
+    medias.length ? tarjeta("Temperatura media", fmt(medias.reduce((a, b) => a + b, 0) / medias.length), "°C") : "",
+    tarjeta("Lluvia total", fmt(lluvia), "mm", `${conLluvia} días con lluvia`),
+    rmax && rmax[1].rain > 0 ? tarjeta("Día más lluvioso", fmt(rmax[1].rain), "mm", corta(rmax[0])) : "",
+    gmax ? tarjeta("Racha máxima", fmt(gmax[1].gmax), "km/h", corta(gmax[0])) : "",
+    tarjeta("Días con datos", dias.length, "", "en el periodo"),
+  ].join("");
+  $("graficas").innerHTML = `
+    <div class="card grafica"><div class="leyenda"><span style="--k:#E5484D">Máxima</span><span style="--k:#8A94A6">Media</span><span style="--k:#3B7BE8">Mínima</span></div><div id="g-dt"></div></div>
+    <div class="card grafica" style="margin-top:14px"><div class="leyenda"><span style="--k:#17A2B0">Lluvia diaria</span><span style="--k:#22A55B">Racha máxima (eje dcho.)</span></div><div id="g-dl"></div></div>`;
+  const hueco = 2.5 * 86400;
+  grafica("g-dt", { t0, t1, alto: 300, izq: { unidad: "°C", series: [
+    { pts: s("tmin"), color: "#3B7BE8", hueco }, { pts: s("tavg"), color: "#8A94A6", ancho: 1.4, raya: "4 3", hueco }, { pts: s("tmax"), color: "#E5484D", hueco }] } });
+  grafica("g-dl", { t0, t1, alto: 260,
+    izq: { unidad: "mm", cero: true, rango: 5, series: [{ pts: s("rain"), color: "#17A2B0", barras: 86400 }] },
+    der: { unidad: "km/h", cero: true, rango: 20, dec: 0, series: [{ pts: s("gmax"), color: "#22A55B", ancho: 1.6, hueco }] } });
+}
+
+(async () => {
+  await cargarArchivo();
+  const [d, h] = rapido("hoy"); verPeriodo(d, h);
+})();
+document.addEventListener("tema", () => periodo && verPeriodo(periodo.d, periodo.h));
+</script>
+</body>
+</html>
